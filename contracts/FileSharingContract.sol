@@ -18,7 +18,7 @@ contract FileShare {
     struct FileInfo {
         address owner;
         mapping(address => bool) whitelist;
-        bool isKYCNeeded;
+        bool is_KYC_needed;
     }
 
     /// @notice KYC contract address in network
@@ -49,12 +49,12 @@ contract FileShare {
 
     /// @notice adds new file
     /// @param fileID file identifier
-    /// @param isKYCNeeded uses to check signer's KYC authorization. If a user isn't
+    /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
     ///        authorized, he can't get access to the file
-    function addFile(bytes32 fileID, bool isKYCNeeded) public only_KYC(msg.sender) {
+    function add_file(bytes32 fileID, bool is_KYC_needed) public only_KYC(msg.sender) {
         FileInfo memory file;
         file.owner = msg.sender;
-        file.isKYCNeeded = isKYCNeeded;
+        file.is_KYC_needed = is_KYC_needed;
         files[fileID] = file;
         files[fileID].whitelist[msg.sender] = true;
     }
@@ -62,7 +62,7 @@ contract FileShare {
     /// @notice grants the users access to the file
     /// @param fileID file identifier
     /// @param accounts users, which get access to the file
-    function addAccess(bytes32 fileID, address[] memory accounts) public
+    function add_access(bytes32 fileID, address[] memory accounts) public
         only_owner(fileID) {
 
         for (uint i = 0; i < accounts.length; i++) {
@@ -73,7 +73,7 @@ contract FileShare {
     /// @notice removes user access to a file
     /// @param fileID file identifier
     /// @param accounts denied users
-    function removeAccess(bytes32 fileID, address[] memory accounts) public
+    function remove_access(bytes32 fileID, address[] memory accounts) public
         only_owner(fileID) {
 
         for (uint i = 0; i < accounts.length; i++) {
@@ -85,9 +85,9 @@ contract FileShare {
     /// @param fileID file identifier
     /// @param account user to check
     /// @return bool, whether the user has access to the file
-    function checkAccess(bytes32 fileID, address account) public view returns(bool) {
+    function check_access(bytes32 fileID, address account) public view returns(bool) {
 
-        if (files[fileID].isKYCNeeded && !contractKYC.isAuthorized(account)) {
+        if (files[fileID].is_KYC_needed && !contractKYC.isAuthorized(account)) {
             return false;
         }
         return files[fileID].whitelist[account];
