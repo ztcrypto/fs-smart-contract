@@ -17,17 +17,17 @@ contract FileShare {
     struct FileInfo {
         address owner;
         mapping(address => bool) whitelist;
-        bool is_KYC_needed;
+        bool isKYCNeeded;
     }
 
     /// @notice KYC object for authorizaton checks
-    KYC contract_KYC;
+    KYC contractKYC;
 
     /// @notice maps fileID to file's info
     mapping(bytes32 => FileInfo) files;
 
     /// @notice checks, whether the sender is the owner of the file
-    modifier only_owner(bytes32 fileID) {
+    modifier onlyOwner(bytes32 fileID) {
         require(
             msg.sender == files[fileID].owner,
             "Only owner can call this function."
@@ -36,19 +36,19 @@ contract FileShare {
     }
 
     /// @notice assigns KYC contract address and creates KYC object
-    /// @param KYC_address KYC contract address
-    constructor(address KYC_address) public {
-        contract_KYC = KYC(KYC_address);
+    /// @param KYCAddress KYC contract address
+    constructor(address KYCAddress) public {
+        contractKYC = KYC(KYCAddress);
     }
 
     /// @notice adds new file
     /// @param fileID file identifier
-    /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
+    /// @param isKYCNeeded uses to check signer's KYC authorization. If a user isn't
     ///        authorized, he can't get access to the file
-    function add_file(bytes32 fileID, bool is_KYC_needed) public {
+    function addFile(bytes32 fileID, bool isKYCNeeded) public {
         FileInfo memory file;
         file.owner = msg.sender;
-        file.is_KYC_needed = is_KYC_needed;
+        file.isKYCNeeded = isKYCNeeded;
         files[fileID] = file;
         files[fileID].whitelist[msg.sender] = true;
     }
@@ -56,19 +56,19 @@ contract FileShare {
     /// @notice adds new file
     /// @param fileID file identifier
     /// @param accounts initial whitelist for file
-    /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
+    /// @param isKYCNeeded uses to check signer's KYC authorization. If a user isn't
     ///        authorized, he can't get access to the file
-    function add_file(bytes32 fileID, address[] memory accounts, bool is_KYC_needed) public {
-        add_file(fileID, is_KYC_needed);
-        add_access(fileID, accounts);
+    function addFile(bytes32 fileID, address[] memory accounts, bool isKYCNeeded) public {
+        addFile(fileID, isKYCNeeded);
+        addAccess(fileID, accounts);
     }
 
 
     /// @notice grants the users access to the file
     /// @param fileID file identifier
     /// @param accounts users, which get access to the file
-    function add_access(bytes32 fileID, address[] memory accounts) public
-        only_owner(fileID) {
+    function addAccess(bytes32 fileID, address[] memory accounts) public
+        onlyOwner(fileID) {
 
         for (uint i = 0; i < accounts.length; i++) {
             files[fileID].whitelist[accounts[i]] = true;
@@ -78,8 +78,8 @@ contract FileShare {
     /// @notice removes user access to a file
     /// @param fileID file identifier
     /// @param accounts denied users
-    function remove_access(bytes32 fileID, address[] memory accounts) public
-        only_owner(fileID) {
+    function removeAccess(bytes32 fileID, address[] memory accounts) public
+        onlyOwner(fileID) {
 
         for (uint i = 0; i < accounts.length; i++) {
             delete files[fileID].whitelist[accounts[i]];
@@ -90,9 +90,9 @@ contract FileShare {
     /// @param fileID file identifier
     /// @param account user to check
     /// @return bool, whether the user has access to the file
-    function check_access(bytes32 fileID, address account) public view returns(bool) {
+    function checkAccess(bytes32 fileID, address account) public view returns(bool) {
 
-        if (files[fileID].is_KYC_needed && !contract_KYC.isAuthorized(account)) {
+        if (files[fileID].isKYCNeeded && !contractKYC.isAuthorized(account)) {
             return false;
         }
         return files[fileID].whitelist[account];
