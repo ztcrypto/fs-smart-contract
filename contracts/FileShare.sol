@@ -24,7 +24,7 @@ contract FileShare {
     KYC contractKYC;
 
     /// @notice maps fileID to file's info
-    mapping(bytes32 => FileInfo) files;
+    mapping(bytes32 => FileInfo) public files;
 
     /// @notice checks, whether the sender is the owner of the file
     modifier onlyOwner(bytes32 fileID) {
