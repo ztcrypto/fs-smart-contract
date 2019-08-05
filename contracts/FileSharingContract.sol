@@ -7,7 +7,6 @@ contract KYC {
     function isAuthorized(address user) external view returns(bool);
 }
 
-
 /// @title File Sharing smart contract
 /// @author Egor Nickolayenya
 /// @notice independent smart contract for access permissions management to the
@@ -21,10 +20,8 @@ contract FileShare {
         bool is_KYC_needed;
     }
 
-    /// @notice KYC contract address in network
-    address     KYC_addr = 0x000000000000000000000000000000000000000A;
     /// @notice KYC object for authorizaton checks
-    KYC         contractKYC = KYC(KYC_addr);
+    KYC contract_KYC;
 
     /// @notice maps fileID to file's info
     mapping(bytes32 => FileInfo) files;
@@ -38,6 +35,12 @@ contract FileShare {
         _;
     }
 
+    /// @notice assigns KYC contract address and creates KYC object
+    /// @param KYC_address KYC contract address
+    constructor(address KYC_address) public {
+        contract_KYC = KYC(KYC_address);
+    }
+
     /// @notice adds new file
     /// @param fileID file identifier
     /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
@@ -49,6 +52,17 @@ contract FileShare {
         files[fileID] = file;
         files[fileID].whitelist[msg.sender] = true;
     }
+
+    /// @notice adds new file
+    /// @param fileID file identifier
+    /// @param accounts initial whitelist for file
+    /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
+    ///        authorized, he can't get access to the file
+    function add_file(bytes32 fileID, address[] memory accounts, bool is_KYC_needed) public {
+        add_file(fileID, is_KYC_needed);
+        add_access(fileID, accounts);
+    }
+
 
     /// @notice grants the users access to the file
     /// @param fileID file identifier
@@ -78,7 +92,7 @@ contract FileShare {
     /// @return bool, whether the user has access to the file
     function check_access(bytes32 fileID, address account) public view returns(bool) {
 
-        if (files[fileID].is_KYC_needed && !contractKYC.isAuthorized(account)) {
+        if (files[fileID].is_KYC_needed && !contract_KYC.isAuthorized(account)) {
             return false;
         }
         return files[fileID].whitelist[account];
