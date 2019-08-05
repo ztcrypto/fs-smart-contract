@@ -38,20 +38,11 @@ contract FileShare {
         _;
     }
 
-    /// @notice checks, if the user is authorized via KYC
-    modifier only_KYC(address account) {
-        require(
-            contractKYC.isAuthorized(account),
-            "KYC authorization needed"
-        );
-        _;
-    }
-
     /// @notice adds new file
     /// @param fileID file identifier
     /// @param is_KYC_needed uses to check signer's KYC authorization. If a user isn't
     ///        authorized, he can't get access to the file
-    function add_file(bytes32 fileID, bool is_KYC_needed) public only_KYC(msg.sender) {
+    function add_file(bytes32 fileID, bool is_KYC_needed) public {
         FileInfo memory file;
         file.owner = msg.sender;
         file.is_KYC_needed = is_KYC_needed;
