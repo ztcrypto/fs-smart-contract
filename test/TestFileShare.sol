@@ -4,6 +4,7 @@ import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "../contracts/FileShare.sol";
 import "../contracts/ThrowProxy.sol";
+import "../contracts/KYCMock.sol";
 
 
 contract TestFileSharing {
@@ -155,6 +156,45 @@ contract TestFileSharing {
 
         for(uint j = 0; j < filesAmount; j++) {
             Assert.isTrue(fs.checkAccess(files[j], address(this)), "The owner should be whitelisted");
+        }
+    }
+
+    function testKYCAccess() public {
+        FileShare fs = FileShare(DeployedAddresses.FileShare());
+        KYCMock contractKYC = KYCMock(DeployedAddresses.KYCMock());
+
+        uint KYCAccountsAmount = 5;
+        address[] memory KYCAccounts = new address[](KYCAccountsAmount);
+        for(uint i = 1; i < KYCAccountsAmount + 1; i++) {
+            KYCAccounts[i - 1] = address(i + 111);
+            contractKYC.addUser(KYCAccounts[i - 1]);
+            Assert.isTrue(contractKYC.isAuthorized(KYCAccounts[i - 1]), "The account should be KYC authorized");
+        }
+
+        uint nonKYCAccountsAmount = 5;
+        address[] memory nonKYCAccounts = new address[](nonKYCAccountsAmount);
+        for(uint i = 1; i < nonKYCAccountsAmount + 1; i++) {
+            nonKYCAccounts[i - 1] = address(i + 222);
+            Assert.isFalse(contractKYC.isAuthorized(nonKYCAccounts[i - 1]), "The account shouldn't be KYC authorized");
+        }
+
+        fs.addFile(testFileID, true);
+        fs.addAccess(testFileID, KYCAccounts);
+        fs.addAccess(testFileID, nonKYCAccounts);
+
+        for(uint j = 0; j < KYCAccountsAmount; j++) {
+            Assert.isTrue(fs.checkAccess(testFileID, KYCAccounts[j]), "The account should have access");
+        }
+
+        // checks non-KYC accounts
+        for(uint j = 0; j < nonKYCAccountsAmount; j++) {
+            Assert.isFalse(fs.checkAccess(testFileID, nonKYCAccounts[j]), "The account shouldn't have access");
+        }
+
+        // checks non-KYC accounts with KYC rights
+        for(uint j = 0; j < nonKYCAccountsAmount; j++) {
+            contractKYC.addUser(nonKYCAccounts[j]);
+            Assert.isTrue(fs.checkAccess(testFileID, nonKYCAccounts[j]), "The account should have access");
         }
     }
 }

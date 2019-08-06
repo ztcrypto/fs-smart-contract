@@ -1,5 +1,8 @@
 var FileShare = artifacts.require("./FileShare.sol");
+var KYCMock = artifacts.require("./KYCMock.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(FileShare, "0x000000000000000000000000000000000000000A");
+  deployer.deploy(KYCMock).then(function() {
+    return deployer.deploy(FileShare, KYCMock.address);
+  })
 };
