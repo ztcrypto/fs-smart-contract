@@ -1,21 +1,22 @@
 # File Sharing contract
 
-Этот контракт контролирует доступ к пользовательским файлам по whitelist, owner и KYC.
+This contract controls access to user files via whitelist, owner and KYC.
 
-| Поле | Тип | Ключевые слова | Описание |
+| Field | Type | Key words | Description |
 |---|---|---|---|
-| `contractKYC` | `KYC` | `public` | Объект KYC контракта для проверки авторизации |
-| `files` | `mapping(bytes32 => FileInfo)` | `public` | Маппинг адресов файлов на информацию о них |
+| `contractKYC` | `KYC` | `public` | KYC contract object for authetication checks |
+| `files` | `mapping(bytes32 => FileInfo)` | `public` | Mapping of files' addresses to information about them |
 
-| Модификатор | Принимаемые значения | Описание |
+| Modifier | Accepted values | Description |
 |---|---|---|
-| `onlyOwner` | `bytes32 fileID` - идентификатор файла | Модификатор доступа "только для владельца" |
+| `onlyOwner` | `bytes32 fileID` - file ID | only owner access modifier |
 
-| Метод | Возвращаемое значение | Аргументы | Ключевые слова | Описание |
+| Method | Returned value | Argument | Key words | Description |
 |---|---|---|---|---|
-| `constructor` | -//- | `address KYCAddress` - адрес KYC контракта | `public` | Конструктор контракта |
-| `addFile` | -//- | `bytes32 fileID` - идентификатор нового файла, `bool isKYCNeeded` - флаг для проверки KYC у пользователей из whitelist файла | `public` | Метод для добавления нового файла |
-| `addFile` | -//- | `bytes32 fileID` - идентификатор нового файла, `address[] memory accounts` - whitelist файла, `bool isKYCNeeded` - флаг для проверки KYC у пользователей из whitelist файла | `public` | Перегрузка метода addFile с whitelist файла |
-| `addAccess` | -//- | `bytes32 fileID` - идентификатор файла, `address[] memory accounts` - новые аккаунты для whitelist файла | `public` | Метод для выдачи пользователям доступа к файлу |
-| `removeAccess` | -//- | `bytes32 fileID` - идентификатор файла, `address[] memory accounts` - аккаунты, которые нужно удалить из whitelist | `public` | Метод для лишения пользователей доступа к файлу |
-| `checkAccess` | `bool` | `bytes32 fileID` - идентификатор файла, `address account` - аккаунт, у которого проверяется наличие доступа к файлу | `public view` | Метод для проверки доступа к файлу у пользователя |
+| `constructor` | -//- | `address KYCAddress` - KYC contract address | `public` | Contract constructor |
+| `addFile` | -//- | `bytes32 fileID` - new file ID, `bool isKYCNeeded` - flag to check whitelisted users' KYC status | `public` | Method to add a new file |
+| `addFile` | -//- | `bytes32 fileID` - new file ID, `address[] memory accounts` - file whitelist, `bool isKYCNeeded` - flag to check whitelisted users' KYC status | `public` | Reload addFile method from the file's whitelist |
+| `addAccess` | -//- | `bytes32 fileID` - file ID, `address[] memory accounts` - new addresses to be added to whitelist | `public` | A method to allow users file access |
+| `removeAccess` | -//- | `bytes32 fileID` - file ID, `address[] memory accounts` - addresses to be removed from whitelist | `public` | A method to revoke access to file |
+| `checkAccess` | `bool` | `bytes32 fileID` - file ID, `address account` - address that is checked for access permissions | `public view` | Method to check if a user has access to a file |
+
