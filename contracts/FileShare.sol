@@ -21,7 +21,7 @@ contract FileShare {
     }
 
     /// @notice KYC object for authorizaton checks
-    KYC contractKYC;
+    KYC private _contractKYC;
 
     /// @notice maps fileID to file's info
     mapping(bytes32 => FileInfo) public files;
@@ -38,7 +38,7 @@ contract FileShare {
     /// @notice assigns KYC contract address and creates KYC object
     /// @param KYCAddress KYC contract address
     constructor(address KYCAddress) public {
-        contractKYC = KYC(KYCAddress);
+        _contractKYC = KYC(KYCAddress);
     }
 
     /// @notice adds new file
@@ -91,7 +91,7 @@ contract FileShare {
     /// @param account user to check
     /// @return bool, whether the user has access to the file
     function checkAccess(bytes32 fileID, address account) external view returns(bool) {
-        if (files[fileID].isKYCNeeded && !contractKYC.isAuthorized(account)) {
+        if (files[fileID].isKYCNeeded && !_contractKYC.isAuthorized(account)) {
             return false;
         }
         return files[fileID].whitelist[account];

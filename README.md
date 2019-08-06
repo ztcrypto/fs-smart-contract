@@ -4,7 +4,7 @@ This contract controls access to user files via whitelist, owner and KYC.
 
 | Field | Type | Key words | Description |
 |---|---|---|---|
-| `contractKYC` | `KYC` | `public` | KYC contract object for authetication checks |
+| `_contractKYC` | `KYC` | `private` | KYC contract object for authetication checks |
 | `files` | `mapping(bytes32 => FileInfo)` | `public` | Mapping of files' addresses to information about them |
 
 | Modifier | Accepted values | Description |
@@ -19,4 +19,3 @@ This contract controls access to user files via whitelist, owner and KYC.
 | `addAccess` | -//- | `bytes32 fileID` - file ID, `address[] memory accounts` - new addresses to be added to whitelist | `public` | A method to allow users file access |
 | `removeAccess` | -//- | `bytes32 fileID` - file ID, `address[] memory accounts` - addresses to be removed from whitelist | `public` | A method to revoke access to file |
 | `checkAccess` | `bool` | `bytes32 fileID` - file ID, `address account` - address that is checked for access permissions | `public view` | Method to check if a user has access to a file |
-
