@@ -58,7 +58,7 @@ contract FileShare {
     /// @param accounts initial whitelist for file
     /// @param isKYCNeeded uses to check signer's KYC authorization. If a user isn't
     ///        authorized, he can't get access to the file
-    function addFile(bytes32 fileID, address[] memory accounts, bool isKYCNeeded) public {
+    function addFile(bytes32 fileID, address[] calldata accounts, bool isKYCNeeded) external {
         addFile(fileID, isKYCNeeded);
         addAccess(fileID, accounts);
     }
@@ -78,7 +78,7 @@ contract FileShare {
     /// @notice removes user access to a file
     /// @param fileID file identifier
     /// @param accounts denied users
-    function removeAccess(bytes32 fileID, address[] memory accounts) public
+    function removeAccess(bytes32 fileID, address[] calldata accounts) external
         onlyOwner(fileID) {
 
         for (uint i = 0; i < accounts.length; i++) {
@@ -90,8 +90,7 @@ contract FileShare {
     /// @param fileID file identifier
     /// @param account user to check
     /// @return bool, whether the user has access to the file
-    function checkAccess(bytes32 fileID, address account) public view returns(bool) {
-
+    function checkAccess(bytes32 fileID, address account) external view returns(bool) {
         if (files[fileID].isKYCNeeded && !contractKYC.isAuthorized(account)) {
             return false;
         }
