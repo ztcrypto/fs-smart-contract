@@ -8,138 +8,195 @@ import "../contracts/KYCMock.sol";
 
 
 contract TestFileSharing {
-    bytes32 testFileID = bytes32(0x6161610000000000000000000000000000000000000000000000000000000000);
-
-    function testCreateFile() public {
+    function testAccessForNonWhitelisted() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test1";
 
-        bool testIsKYCNeeded = false;
-        fs.addFile(testFileID, testIsKYCNeeded);
-
-        (address owner, bool isKYCNeeded) = fs.files(testFileID);
-        Assert.equal(owner, address(this), "Invalid owner");
-        Assert.equal(isKYCNeeded, testIsKYCNeeded, "Invalid KYC flag");
+        fs.addFile(fileID);
+        Assert.isFalse(fs.checkAccess(fileID, address(0x11110)), "The user shouldn't have access");
     }
 
-    function testCheckAccess() public {
+    function testAccessForWhitelisted() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test2";
 
-        fs.addFile(testFileID, false);
-        Assert.equal(fs.checkAccess(testFileID, address(this)), true, "Invalid access for file owner");
+        address person = address(0x11111);
+        address[] memory personList = new address[](1);
+        personList[0] = person;
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = false;
+        fs.addFile(fileID, personList, accessList);
+        Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
     }
 
-    function testNonOwnerAccess() public {
+    function testAccessForUserWithoutKYC() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test3";
 
-        fs.addFile(testFileID, false);
-        address account = address(0x111111111);
-        Assert.isFalse(fs.checkAccess(testFileID, account), "Invalid permission for account");
+        address person = address(0x11112);
+        address[] memory personList = new address[](1);
+        personList[0] = person;
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = true;
+
+        fs.addFile(fileID, personList, accessList);
+        Assert.isFalse(fs.checkAccess(fileID, person), "The user shouldn't have access");
+
+        fs.setKYCAccess(fileID, person, false);
+        Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
+    }
+
+    function testAccessForUserWithKYC() public {
+        FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test4";
+
+        KYCMock contractKYC = KYCMock(DeployedAddresses.KYCMock());
+
+        address person = address(0x11113);
+        address[] memory personList = new address[](1);
+        personList[0] = person;
+        contractKYC.addUser(person);
+
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = true;
+
+        fs.addFile(fileID, personList, accessList);
+        Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
+    }
+
+    function testOwnerAccessToFile() public {
+        FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test5";
+
+        fs.addFile(fileID);
+        Assert.isTrue(fs.checkAccess(fileID, address(this)), "Owner should have access to file");
     }
 
     function testAddFileWithWhitelist() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test6";
 
-        address whitelistAccount1 = address(0x111);
-        address whitelistAccount2 = address(0x222);
-        address nonWhitelistAccount = address(0x333);
+        address person1 = address(0x111);
+        address person2 = address(0x222);
+        address nonWhitelistPerson = address(0x333);
 
         address[] memory whitelist = new address[](2);
-        whitelist[0] = whitelistAccount1;
-        whitelist[1] = whitelistAccount2;
+        whitelist[0] = person1;
+        whitelist[1] = person2;
 
-        fs.addFile(testFileID, whitelist, false);
+        bool[] memory accessList = new bool[](2);
+        accessList[0] = false;
+        accessList[1] = false;
 
-        Assert.equal(fs.checkAccess(testFileID, whitelistAccount1), true, "Invalid access for whitelisted account");
-        Assert.equal(fs.checkAccess(testFileID, whitelistAccount2), true, "Invalid access for whitelisted account");
-        Assert.equal(fs.checkAccess(testFileID, nonWhitelistAccount), false, "Invalid access for non-whitelisted account");
+        fs.addFile(fileID, whitelist, accessList);
+
+        Assert.equal(fs.checkAccess(fileID, person1), true, "Invalid access for whitelisted account");
+        Assert.equal(fs.checkAccess(fileID, person1), true, "Invalid access for whitelisted account");
+        Assert.equal(fs.checkAccess(fileID, nonWhitelistPerson), false, "Invalid access for non-whitelisted account");
     }
 
-    function testAddAccess() public {
+    function testSetKYCAccessForNonWhitelisted() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test7";
 
-        address whitelistAccount = address(0x111);
-        address[] memory whitelist = new address[](1);
-        whitelist[0] = whitelistAccount;
-        fs.addFile(testFileID, false);
-        fs.addAccess(testFileID, whitelist);
-        Assert.equal(fs.checkAccess(testFileID, whitelistAccount), true, "Invalid access for whitelisted account");
+        ThrowProxy throwProxy = new ThrowProxy(address(fs));
+        fs.addFile(fileID);
+
+        address person = address(0x198498);
+
+        Assert.isFalse(fs.checkAccess(fileID, person), "The user shouldn't have access");
+        FileShare(address(throwProxy)).setKYCAccess(fileID, person, true);
+        bool r = throwProxy.execute.gas(200000)();
+        Assert.isFalse(r, "Should throw, because person isn't whitelisted");
     }
 
     function testRemoveAccess() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test8";
 
-        address whitelistAccount = address(0x1);
+        address person = address(0x9071234);
         address[] memory whitelist = new address[](1);
-        whitelist[0] = whitelistAccount;
-        fs.addFile(testFileID, false);
-        fs.addAccess(testFileID, whitelist);
-        fs.removeAccess(testFileID, whitelist);
-        Assert.equal(fs.checkAccess(testFileID, whitelistAccount), false, "Invalid access for whitelisted account");
+        whitelist[0] = person;
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = false;
+
+        fs.addFile(fileID, whitelist, accessList);
+        fs.removeAccess(fileID, whitelist);
+        Assert.equal(fs.checkAccess(fileID, person), false, "The account shouldn't have access");
     }
 
-    function testOnlyOwnerAddAccessModifier() public {
+    function testOnlyOwnerModifierInAddAccess() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test9";
 
-        fs.addFile(testFileID, false);
+        fs.addFile(fileID);
 
-        address account1 = address(0x11111111);
-        address[] memory accounts = new address[](1);
-        accounts[0] = account1;
+        address person = address(0x11171338);
+        address[] memory whitelist = new address[](1);
+        whitelist[0] = person;
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = false;
 
-        Assert.isFalse(fs.checkAccess(testFileID, account1), "There shouldn't be any permissions on the file");
+        Assert.isFalse(fs.checkAccess(fileID, person), "There shouldn't be any permissions on the file");
 
         ThrowProxy throwProxy = new ThrowProxy(address(fs));
-        FileShare(address(throwProxy)).addAccess(testFileID, accounts);
+        FileShare(address(throwProxy)).addAccess(fileID, whitelist, accessList);
         bool r = throwProxy.execute.gas(200000)();
         Assert.isFalse(r, "Should be throw, because sender is not owner");
-        Assert.isFalse(fs.checkAccess(testFileID, account1), "The account can't be whitelisted");
+        Assert.isFalse(fs.checkAccess(fileID, person), "The account shouldn't be whitelisted");
 
-        fs.addAccess(testFileID, accounts);
-        Assert.isTrue(fs.checkAccess(testFileID, account1), "The account should be whitelisted");
+        fs.addAccess(fileID, whitelist, accessList);
+        Assert.isTrue(fs.checkAccess(fileID, person), "The account should be whitelisted");
     }
 
-    function testOnlyOwnerRemoveAccessModifier() public {
+    function testOnlyOwnerModifierInRemoveAccess() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test10";
 
-        fs.addFile(testFileID, false);
+        fs.addFile(fileID);
 
-        address account1 = address(0x11111111);
-        address[] memory accounts = new address[](1);
-        accounts[0] = account1;
+        address person = address(0x11898480);
+        address[] memory whitelist = new address[](1);
+        whitelist[0] = person;
+        bool[] memory accessList = new bool[](1);
+        accessList[0] = false;
 
-        fs.addAccess(testFileID, accounts);
-        Assert.isTrue(fs.checkAccess(testFileID, account1), "The account should be whitelisted");
+        fs.addAccess(fileID, whitelist, accessList);
+        Assert.isTrue(fs.checkAccess(fileID, person), "The account should be whitelisted");
 
         ThrowProxy throwProxy = new ThrowProxy(address(fs));
-        FileShare(address(throwProxy)).removeAccess(testFileID, accounts);
+        FileShare(address(throwProxy)).removeAccess(fileID, whitelist);
         bool r = throwProxy.execute.gas(200000)();
         Assert.isFalse(r, "Should be throw, because sender is not owner");
 
-        fs.removeAccess(testFileID, accounts);
-        Assert.isFalse(fs.checkAccess(testFileID, account1), "The account shouldn't be whitelisted");
+        fs.removeAccess(fileID, whitelist);
+        Assert.isFalse(fs.checkAccess(fileID, person), "The account shouldn't be whitelisted");
     }
 
     function testAddRemoveAccessForManyAccounts() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+        string memory fileID = "test11";
 
         uint accountsAmount = 10;
         address[] memory accounts = new address[](accountsAmount);
+        bool[] memory accessList = new bool[](accountsAmount);
 
-        fs.addFile(testFileID, false);
+        fs.addFile(fileID);
 
         for(uint i = 1; i < accountsAmount + 1; i++) {
             accounts[i - 1] = address(i);
+            accessList[i - 1] = false;
         }
-        fs.addAccess(testFileID, accounts);
+        fs.addAccess(fileID, accounts, accessList);
 
         for(uint j = 0; j < accountsAmount; j++) {
-            Assert.isTrue(fs.checkAccess(testFileID, accounts[j]), "The account should be whitelisted");
+            Assert.isTrue(fs.checkAccess(fileID, accounts[j]), "The account should be whitelisted");
         }
 
-        fs.removeAccess(testFileID, accounts);
+        fs.removeAccess(fileID, accounts);
 
         for(uint j = 0; j < accountsAmount; j++) {
-            Assert.isFalse(fs.checkAccess(testFileID, accounts[j]), "The account shouldn't be whitelisted");
+            Assert.isFalse(fs.checkAccess(fileID, accounts[j]), "The account shouldn't be whitelisted");
         }
     }
 
@@ -147,54 +204,25 @@ contract TestFileSharing {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
 
         uint filesAmount = 10;
-        bytes32[] memory files = new bytes32[](filesAmount);
+        string[] memory files = new string[](filesAmount);
+        files[0] = "0";
+        files[1] = "1";
+        files[2] = "2";
+        files[3] = "3";
+        files[4] = "4";
+        files[5] = "5";
+        files[6] = "6";
+        files[7] = "7";
+        files[8] = "8";
+        files[9] = "9";
 
-        for(uint i = 1; i < filesAmount + 1; i++) {
-            files[i - 1] = bytes32(i);
-            fs.addFile(files[i - 1], false);
+        for(uint i = 0; i < filesAmount; i++) {
+            files[i] = files[i];
+            fs.addFile(files[i]);
         }
 
         for(uint j = 0; j < filesAmount; j++) {
             Assert.isTrue(fs.checkAccess(files[j], address(this)), "The owner should be whitelisted");
-        }
-    }
-
-    function testKYCAccess() public {
-        FileShare fs = FileShare(DeployedAddresses.FileShare());
-        KYCMock contractKYC = KYCMock(DeployedAddresses.KYCMock());
-
-        uint KYCAccountsAmount = 5;
-        address[] memory KYCAccounts = new address[](KYCAccountsAmount);
-        for(uint i = 1; i < KYCAccountsAmount + 1; i++) {
-            KYCAccounts[i - 1] = address(i + 111);
-            contractKYC.addUser(KYCAccounts[i - 1]);
-            Assert.isTrue(contractKYC.isAuthorized(KYCAccounts[i - 1]), "The account should be KYC authorized");
-        }
-
-        uint nonKYCAccountsAmount = 5;
-        address[] memory nonKYCAccounts = new address[](nonKYCAccountsAmount);
-        for(uint i = 1; i < nonKYCAccountsAmount + 1; i++) {
-            nonKYCAccounts[i - 1] = address(i + 222);
-            Assert.isFalse(contractKYC.isAuthorized(nonKYCAccounts[i - 1]), "The account shouldn't be KYC authorized");
-        }
-
-        fs.addFile(testFileID, true);
-        fs.addAccess(testFileID, KYCAccounts);
-        fs.addAccess(testFileID, nonKYCAccounts);
-
-        for(uint j = 0; j < KYCAccountsAmount; j++) {
-            Assert.isTrue(fs.checkAccess(testFileID, KYCAccounts[j]), "The account should have access");
-        }
-
-        // checks non-KYC accounts
-        for(uint j = 0; j < nonKYCAccountsAmount; j++) {
-            Assert.isFalse(fs.checkAccess(testFileID, nonKYCAccounts[j]), "The account shouldn't have access");
-        }
-
-        // checks non-KYC accounts with KYC rights
-        for(uint j = 0; j < nonKYCAccountsAmount; j++) {
-            contractKYC.addUser(nonKYCAccounts[j]);
-            Assert.isTrue(fs.checkAccess(testFileID, nonKYCAccounts[j]), "The account should have access");
         }
     }
 }
