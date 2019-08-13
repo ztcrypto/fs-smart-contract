@@ -33,16 +33,21 @@ contract FileShare {
     }
 
     /// @notice counts number of event
-    uint private _eventCounter = 1;
+    uint private _version = 0;
+
+    /// @notice event codes
+    uint constant _contractCreatedCode = 10001;
+    uint constant _personListAddedCode = 10002;
+    uint constant _personListRemovedCode = 10003;
+    uint constant _fileAddedCode = 10004;
+    uint constant _personKYCChangedCode = 10005;
 
     /// @notice events
-    event ContractCreated(uint code);
-    event PersonListAdded(uint code, string fileID, address[] persons);
-    event PersonListRemoved(uint code, string fileID, address[] persons);
-    event FileAdded(uint code, address owner, string fileID);
-    event FileExtensionChanged(uint code, string fileID);
-    event PersonExtensionChanged(uint code, string fileID, address person);
-    event PersonKYCChanged(uint code, string fileID, address person, bool newValue);
+    event ContractCreated(uint code, uint version, address KYCAddress);
+    event PersonListAdded(uint code, uint version, string fileID, address[] persons, bool[] KYCAccesses);
+    event PersonListRemoved(uint code, uint version, string fileID, address[] persons);
+    event FileAdded(uint code, uint version, address owner, string fileID);
+    event PersonKYCChanged(uint code, uint version, string fileID, address person, bool isKYCNeeded);
 
     /// @notice KYC object for authorizaton checks
     KYC private _contractKYC;
@@ -64,7 +69,7 @@ contract FileShare {
     /// @param KYCAddress KYC contract address
     constructor(address KYCAddress) public {
         _contractKYC = KYC(KYCAddress);
-        emit ContractCreated(_eventCounter++);
+        emit ContractCreated(_contractCreatedCode, _version++, KYCAddress);
     }
 
     /// @notice adds new file
@@ -79,7 +84,7 @@ contract FileShare {
         _files[fileID] = file;
         _files[fileID].whitelist[msg.sender] = owner;
 
-        emit FileAdded(_eventCounter++, msg.sender, fileID);
+        emit FileAdded(_fileAddedCode, _version++, msg.sender, fileID);
     }
 
     /// @notice adds new file
@@ -107,7 +112,7 @@ contract FileShare {
             _files[fileID].whitelist[persons[i]] = newPerson;
         }
 
-        emit PersonListAdded(_eventCounter++, fileID, persons);
+        emit PersonListAdded(_personListAddedCode, _version++, fileID, persons, KYCAccesses);
     }
 
     /// @notice sets user flag for KYC checking
@@ -120,7 +125,7 @@ contract FileShare {
         Person storage editedPerson = _files[fileID].whitelist[person];
         require(editedPerson.person != address(0x0), "The person is not in whitelist");
         editedPerson.isKYCNeeded = isKYCNeeded;
-        emit PersonKYCChanged(_eventCounter++, fileID, person, isKYCNeeded);
+        emit PersonKYCChanged(_personKYCChangedCode, _version++, fileID, person, isKYCNeeded);
     }
 
     /// @notice removes user access to a file
@@ -133,7 +138,7 @@ contract FileShare {
             delete _files[fileID].whitelist[persons[i]];
         }
 
-        emit PersonListRemoved(_eventCounter++, fileID, persons);
+        emit PersonListRemoved(_personListRemovedCode, _version++, fileID, persons);
     }
 
     /// @notice determines, whether the user has access to the file
@@ -158,7 +163,6 @@ contract FileShare {
     function setFileExtension(string calldata fileID, string calldata extension) external
         onlyOwner(fileID) {
         _files[fileID]._extension = extension;
-        emit FileExtensionChanged(_eventCounter++, fileID);
     }
 
     /// @notice sets Person additional space
@@ -170,7 +174,6 @@ contract FileShare {
         Person storage editedPerson = _files[fileID].whitelist[person];
         if (editedPerson.person != address(0x0)) {
             editedPerson._extension = extension;
-            emit PersonExtensionChanged(_eventCounter++, fileID, person);
         }
     }
 }

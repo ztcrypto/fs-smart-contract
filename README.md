@@ -8,7 +8,7 @@ This contract controls access to user files via whitelist, owner and KYC.
 |---|---|---|---|
 | `_contractKYC` | `KYC` | `private` | KYC contract object for authetication checks |
 | `_files` | `mapping(string => FileInfo)` | `private` | Mapping of files' addresses to information about them |
-| `_eventCounter` | `uint` | `private` | Counter of emitted events |
+| `_version` | `uint` | `private` | Counter of emitted events |
 
 ## Modifiers
 
@@ -16,17 +16,25 @@ This contract controls access to user files via whitelist, owner and KYC.
 |---|---|---|
 | `onlyOwner` | `string fileID` - file ID | only owner access modifier |
 
+## Event codes
+
+| Code | Value |
+|---|---|
+| `_contractCreatedCode` | `10001` |
+| `_personListAddedCode` | `10002` |
+| `_personListRemovedCode` | `10003` |
+| `_fileAddedCode` | `10004` |
+| `_personKYCChangedCode` | `10005` |
+
 ## Events
 
 | Event | Accepted values | Description |
 |---|---|---|
-| `ContractCreated` | `uint code` - event code | Emits when contract created |
-| `PersonListAdded` | `uint code` - event code, `string fileID` - file ID, `address[] persons` - users, added to file's whitelist | Emits when persons list has been added to whitelist |
-| `PersonListRemoved` | `uint code` - event code, `string fileID` - file ID, `address[] persons` - users, removed from file's whitelist | Emits when persons list has been removed from whitelist |
-| `FileAdded` | `uint code` - event code, `address owner` - file owner, `string fileID` - file ID | Emits when new file added |
-| `FileExtensionChanged` | `uint code` - event code, `string fileID` - file ID | Emits when file owner change file's additional information |
-| `PersonExtensionChanged` | `uint code` - event code, `string fileID` - file ID, `address person` - whitelisted person address | Emits when file owner change file's additional information |
-| `PersonKYCChanged` | `uint code` - event code, `string fileID` - file ID, `address person` - whitelisted person address, `bool newValue` - new value of KYC access for person | Emits when persons KYC flag changes |
+| `ContractCreated` | `uint code` - event code, `uint version` - version, `address KYCAddress` - address of KYC contract | Emits when contract created |
+| `PersonListAdded` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address[] persons` - users, added to file's whitelist, `bool[] KYCAccesses` - "is KYC needed" flag for each user | Emits when persons list has been added to whitelist |
+| `PersonListRemoved` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address[] persons` - users, removed from file's whitelist | Emits when persons list has been removed from whitelist |
+| `FileAdded` | `uint code` - event code, `uint version` - version, `address owner` - file owner, `string fileID` - file ID | Emits when new file added |
+| `PersonKYCChanged` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address person` - whitelisted person address, `bool isKYCNeeded` - new value of KYC access for person | Emits when persons KYC flag changes |
 
 ## Methods
 
