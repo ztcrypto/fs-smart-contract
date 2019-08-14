@@ -12,42 +12,25 @@ contract KYC {
 ///         files added/created via the Blockcerts products usage
 contract FileShare {
 
-    /// @notice Person - user information, stores address and KYC flag
-    struct Person {
+    /// @notice Participant - user information, stores address and KYC flag
+    struct Participant {
         /// @notice user address
-        address person;
+        address participant;
         /// @notice whether to check KYC for user
         bool isKYCNeeded;
         /// @notice space for more data
-        string _extension;
+        string extension;
     }
 
-    /// @notice FileInfo - file information, needs to store person's permissions for file
+    /// @notice FileInfo - file information, needs to store participant's permissions for file
     struct FileInfo {
         /// @notice owner of file
-        Person owner;
+        Participant owner;
         /// @notice file's whitelist
-        mapping(address => Person) whitelist;
+        mapping(address => Participant) whitelist;
         /// @notice space for more data
-        string _extension;
+        string extension;
     }
-
-    /// @notice counts number of event
-    uint private _version = 0;
-
-    /// @notice event codes
-    uint constant _contractCreatedCode = 10001;
-    uint constant _personListAddedCode = 10002;
-    uint constant _personListRemovedCode = 10003;
-    uint constant _fileAddedCode = 10004;
-    uint constant _personKYCChangedCode = 10005;
-
-    /// @notice events
-    event ContractCreated(uint code, uint version, address KYCAddress);
-    event PersonListAdded(uint code, uint version, string fileID, address[] persons, bool[] KYCAccesses);
-    event PersonListRemoved(uint code, uint version, string fileID, address[] persons);
-    event FileAdded(uint code, uint version, address owner, string fileID);
-    event PersonKYCChanged(uint code, uint version, string fileID, address person, bool isKYCNeeded);
 
     /// @notice KYC object for authorizaton checks
     KYC private _contractKYC;
@@ -55,12 +38,46 @@ contract FileShare {
     /// @notice maps fileID to file's info
     mapping(string => FileInfo) _files;
 
+    /// @notice counts number of event
+    uint private _version = 0;
+
+    /// @notice event codes
+    uint constant _contractCreatedCode = 10001;
+    uint constant _participantAddedCode = 10002;
+    uint constant _participantListAddedCode = 10003;
+    uint constant _participantRemovedCode = 10004;
+    uint constant _participantListRemovedCode = 10005;
+    uint constant _fileAddedCode = 10006;
+    uint constant _fileAddedWithWhitelistCode = 10007;
+    uint constant _participantKYCChangedCode = 10008;
+
+    /// @notice events
+    event ContractCreated(uint code, uint version, address KYCAddress);
+    event ParticipantAdded(uint code, uint version, string fileID, address participant, bool isKYCNeeded);
+    event ParticipantListAdded(uint code, uint version, string fileID, address[] participants, bool[] isKYCNeededList);
+    event ParticipantRemoved(uint code, uint version, string fileID, address participant);
+    event ParticipantListRemoved(uint code, uint version, string fileID, address[] participants);
+    event FileAdded(uint code, uint version, address owner, string fileID);
+    event FileAddedWithWhitelist(uint code, uint version, address owner, string fileID, address[] participants, bool[] isKYCNeededList);
+    event ParticipantKYCChanged(uint code, uint version, string fileID, address participant, bool isKYCNeeded);
+
     /// @notice checks, whether the sender is the owner of the file
     /// @param fileID file identifier
     modifier onlyOwner(string memory fileID) {
         require(
-            msg.sender == _files[fileID].owner.person,
-            "Only owner can call this function."
+            msg.sender == _files[fileID].owner.participant,
+            "Only owner can call this function"
+        );
+        _;
+    }
+
+    /// @notice checks, whether participants list and KYC flags list have same length
+    /// @param participants participants list
+    /// @param isKYCNeededList KYC flags
+    modifier whitelistKYCListLengthCheck(address[] memory participants, bool[] memory isKYCNeededList) {
+        require(
+            participants.length == isKYCNeededList.length,
+            "Participants should be same amount as isKYCNeededList"
         );
         _;
     }
@@ -69,88 +86,142 @@ contract FileShare {
     /// @param KYCAddress KYC contract address
     constructor(address KYCAddress) public {
         _contractKYC = KYC(KYCAddress);
+
         emit ContractCreated(_contractCreatedCode, _version++, KYCAddress);
     }
 
     /// @notice adds new file
     /// @param fileID file identifier
-    function addFile(string memory fileID) public {
-        Person memory owner;
-        owner.person = msg.sender;
+    function _addFile(string memory fileID, string memory extension) private {
+        Participant memory owner;
+        owner.participant = msg.sender;
         owner.isKYCNeeded = false;
 
         FileInfo memory file;
         file.owner = owner;
+        file.extension = extension;
         _files[fileID] = file;
         _files[fileID].whitelist[msg.sender] = owner;
+    }
+
+    /// @notice adds new file
+    /// @param fileID file identifier
+    /// @param extension file's additional info
+    function addFile(string calldata fileID, string calldata extension) external {
+        _addFile(fileID, extension);
 
         emit FileAdded(_fileAddedCode, _version++, msg.sender, fileID);
     }
 
     /// @notice adds new file
     /// @param fileID file identifier
-    /// @param persons initial whitelist for file
-    function addFile(string calldata fileID, address[] calldata persons, bool[] calldata KYCAccesses) external {
-        require(persons.length == KYCAccesses.length, "Persons should be same amount as KYCAccesses");
-        addFile(fileID);
-        addAccess(fileID, persons, KYCAccesses);
+    /// @param extension file's additional info
+    /// @param participants initial whitelist for file
+    /// @param isKYCNeededList list of KYC flags for participants
+    function addFile(string calldata fileID, string calldata extension, address[] calldata participants, bool[] calldata isKYCNeededList)
+            external whitelistKYCListLengthCheck(participants, isKYCNeededList) {
+
+        _addFile(fileID, extension);
+        for (uint i = 0; i < participants.length; i++)
+            _addParticipant(fileID, participants[i], isKYCNeededList[i], "");
+
+        emit FileAddedWithWhitelist(_fileAddedWithWhitelistCode, _version++, msg.sender, fileID,
+                                    participants, isKYCNeededList);
     }
 
+    /// @notice grants the user access to the file
+    /// @param fileID file identifier
+    /// @param participant user, which get access to the file
+    /// @param isKYCNeeded KYC flag for participant
+    /// @param extension user additional data
+    function _addParticipant(string memory fileID, address participant,
+                             bool isKYCNeeded, string memory extension) private {
+        Participant memory newParticipant;
+        newParticipant.participant = participant;
+        newParticipant.isKYCNeeded = isKYCNeeded;
+        newParticipant.extension = extension;
+
+        _files[fileID].whitelist[participant] = newParticipant;
+    }
+
+    /// @notice grants the user access to the file
+    /// @param fileID file identifier
+    /// @param participant user, which get access to the file
+    /// @param isKYCNeeded KYC flag for participant
+    /// @param extension user additional data
+    function addParticipant(string calldata fileID, address participant,
+                            bool isKYCNeeded, string calldata extension) external onlyOwner(fileID) {
+        _addParticipant(fileID, participant, isKYCNeeded, extension);
+
+        emit ParticipantAdded(_participantAddedCode, _version++, fileID, participant, isKYCNeeded);
+    }
 
     /// @notice grants the users access to the file
     /// @param fileID file identifier
-    /// @param persons users, which get access to the file
-    function addAccess(string memory fileID, address[] memory persons, bool[] memory KYCAccesses) public
-        onlyOwner(fileID) {
-        require(persons.length == KYCAccesses.length, "Persons should be same amount as KYCAccesses");
+    /// @param participants users, which get access to the file
+    /// @param isKYCNeededList list of KYC flags for participants
+    function addParticipantList(string calldata fileID, address[] calldata participants,
+                                bool[] calldata isKYCNeededList) external
+            onlyOwner(fileID) whitelistKYCListLengthCheck(participants, isKYCNeededList) {
 
-        for (uint i = 0; i < persons.length; i++) {
-            Person memory newPerson;
-            newPerson.person = persons[i];
-            newPerson.isKYCNeeded = KYCAccesses[i];
+        for (uint i = 0; i < participants.length; i++)
+            _addParticipant(fileID, participants[i], isKYCNeededList[i], "");
 
-            _files[fileID].whitelist[persons[i]] = newPerson;
-        }
-
-        emit PersonListAdded(_personListAddedCode, _version++, fileID, persons, KYCAccesses);
-    }
-
-    /// @notice sets user flag for KYC checking
-    /// @param fileID file identifier
-    /// @param person user for editing
-    /// @param isKYCNeeded new value
-    function setKYCAccess(string calldata fileID, address person, bool isKYCNeeded) external
-        onlyOwner(fileID) {
-
-        Person storage editedPerson = _files[fileID].whitelist[person];
-        require(editedPerson.person != address(0x0), "The person is not in whitelist");
-        editedPerson.isKYCNeeded = isKYCNeeded;
-        emit PersonKYCChanged(_personKYCChangedCode, _version++, fileID, person, isKYCNeeded);
+        emit ParticipantListAdded(_participantListAddedCode, _version++, fileID, participants, isKYCNeededList);
     }
 
     /// @notice removes user access to a file
     /// @param fileID file identifier
-    /// @param persons denied users
-    function removeAccess(string calldata fileID, address[] calldata persons) external
-        onlyOwner(fileID) {
+    /// @param participant denied user
+    function _removeParticipant(string memory fileID, address participant) private {
+        delete _files[fileID].whitelist[participant];
+    }
 
-        for (uint i = 0; i < persons.length; i++) {
-            delete _files[fileID].whitelist[persons[i]];
-        }
+    /// @notice removes user access to a file
+    /// @param fileID file identifier
+    /// @param participant denied user
+    function removeParticipant(string calldata fileID, address participant) external onlyOwner(fileID) {
+        _removeParticipant(fileID, participant);
 
-        emit PersonListRemoved(_personListRemovedCode, _version++, fileID, persons);
+        emit ParticipantRemoved(_participantRemovedCode, _version++, fileID, participant);
+    }
+
+    /// @notice removes user access to a file
+    /// @param fileID file identifier
+    /// @param participants denied users
+    function removeParticipantList(string calldata fileID, address[] calldata participants) external
+            onlyOwner(fileID) {
+
+        for (uint i = 0; i < participants.length; i++)
+            _removeParticipant(fileID, participants[i]);
+
+        emit ParticipantListRemoved(_participantListRemovedCode, _version++, fileID, participants);
+    }
+
+    /// @notice sets user flag for KYC checking
+    /// @param fileID file identifier
+    /// @param participant user for editing
+    /// @param isKYCNeeded new value
+    function setParticipantKYC(string calldata fileID, address participant, bool isKYCNeeded) external
+            onlyOwner(fileID) {
+
+        Participant storage editedParticipant = _files[fileID].whitelist[participant];
+        require(editedParticipant.participant != address(0x0), "The participant is not in whitelist");
+        editedParticipant.isKYCNeeded = isKYCNeeded;
+
+        emit ParticipantKYCChanged(_participantKYCChangedCode, _version++, fileID, participant, isKYCNeeded);
     }
 
     /// @notice determines, whether the user has access to the file
     /// @param fileID file identifier
-    /// @param person user to check
+    /// @param participant user to check
     /// @return bool, whether the user has access to the file
-    function checkAccess(string calldata fileID, address person) external view returns(bool) {
-        Person storage checkedPerson = _files[fileID].whitelist[person];
-        if (checkedPerson.person == address(0x0))
+    function checkAccess(string calldata fileID, address participant) external view returns(bool) {
+        Participant storage checkedParticipant = _files[fileID].whitelist[participant];
+        if (checkedParticipant.participant == address(0x0))
             return false;
 
-        if (checkedPerson.isKYCNeeded && !_contractKYC.isAuthorized(person)) {
+        if (checkedParticipant.isKYCNeeded && !_contractKYC.isAuthorized(participant)) {
             return false;
         }
 
@@ -161,19 +232,19 @@ contract FileShare {
     /// @param fileID file identifier
     /// @param extension additional data for file
     function setFileExtension(string calldata fileID, string calldata extension) external
-        onlyOwner(fileID) {
-        _files[fileID]._extension = extension;
+            onlyOwner(fileID) {
+        _files[fileID].extension = extension;
     }
 
-    /// @notice sets Person additional space
+    /// @notice sets Participant additional space
     /// @param fileID file identifier
-    /// @param person person address
-    /// @param extension additional data for whitelisted person
-    function setPersonExtension(string calldata fileID, address person, string calldata extension) external
-        onlyOwner(fileID) {
-        Person storage editedPerson = _files[fileID].whitelist[person];
-        if (editedPerson.person != address(0x0)) {
-            editedPerson._extension = extension;
+    /// @param participant participant address
+    /// @param extension additional data for whitelisted participant
+    function setParticipantExtension(string calldata fileID, address participant, string calldata extension) external
+            onlyOwner(fileID) {
+        Participant storage editedParticipant = _files[fileID].whitelist[participant];
+        if (editedParticipant.participant != address(0x0)) {
+            editedParticipant.extension = extension;
         }
     }
 }

@@ -2,14 +2,16 @@ pragma solidity >=0.4.22 <0.6.0;
 
 import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
+
 import "../contracts/FileShare.sol";
-import "../contracts/ThrowProxy.sol";
 import "../contracts/KYCMock.sol";
+import "./ThrowProxy.sol";
 
 
-contract TestFileSharing {
+contract TestFileShare {
     function testAccessForNonWhitelisted() public {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
+
         string memory fileID = "test1";
 
         fs.addFile(fileID);
@@ -42,15 +44,14 @@ contract TestFileSharing {
         fs.addFile(fileID, personList, accessList);
         Assert.isFalse(fs.checkAccess(fileID, person), "The user shouldn't have access");
 
-        fs.setKYCAccess(fileID, person, false);
+        fs.setParticipantKYC(fileID, person, false);
         Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
     }
 
     function testAccessForUserWithKYC() public {
+        KYCMock contractKYC = KYCMock(DeployedAddresses.KYCMock());
         FileShare fs = FileShare(DeployedAddresses.FileShare());
         string memory fileID = "test4";
-
-        KYCMock contractKYC = KYCMock(DeployedAddresses.KYCMock());
 
         address person = address(0x11113);
         address[] memory personList = new address[](1);
@@ -105,7 +106,7 @@ contract TestFileSharing {
         address person = address(0x198498);
 
         Assert.isFalse(fs.checkAccess(fileID, person), "The user shouldn't have access");
-        FileShare(address(throwProxy)).setKYCAccess(fileID, person, true);
+        FileShare(address(throwProxy)).setParticipantKYC(fileID, person, true);
         bool r = throwProxy.execute.gas(200000)();
         Assert.isFalse(r, "Should throw, because person isn't whitelisted");
     }
@@ -121,7 +122,7 @@ contract TestFileSharing {
         accessList[0] = false;
 
         fs.addFile(fileID, whitelist, accessList);
-        fs.removeAccess(fileID, whitelist);
+        fs.removeParticipantList(fileID, whitelist);
         Assert.equal(fs.checkAccess(fileID, person), false, "The account shouldn't have access");
     }
 
@@ -140,12 +141,12 @@ contract TestFileSharing {
         Assert.isFalse(fs.checkAccess(fileID, person), "There shouldn't be any permissions on the file");
 
         ThrowProxy throwProxy = new ThrowProxy(address(fs));
-        FileShare(address(throwProxy)).addAccess(fileID, whitelist, accessList);
+        FileShare(address(throwProxy)).addParticipantList(fileID, whitelist, accessList);
         bool r = throwProxy.execute.gas(200000)();
         Assert.isFalse(r, "Should be throw, because sender is not owner");
         Assert.isFalse(fs.checkAccess(fileID, person), "The account shouldn't be whitelisted");
 
-        fs.addAccess(fileID, whitelist, accessList);
+        fs.addParticipantList(fileID, whitelist, accessList);
         Assert.isTrue(fs.checkAccess(fileID, person), "The account should be whitelisted");
     }
 
@@ -161,15 +162,15 @@ contract TestFileSharing {
         bool[] memory accessList = new bool[](1);
         accessList[0] = false;
 
-        fs.addAccess(fileID, whitelist, accessList);
+        fs.addParticipantList(fileID, whitelist, accessList);
         Assert.isTrue(fs.checkAccess(fileID, person), "The account should be whitelisted");
 
         ThrowProxy throwProxy = new ThrowProxy(address(fs));
-        FileShare(address(throwProxy)).removeAccess(fileID, whitelist);
+        FileShare(address(throwProxy)).removeParticipantList(fileID, whitelist);
         bool r = throwProxy.execute.gas(200000)();
         Assert.isFalse(r, "Should be throw, because sender is not owner");
 
-        fs.removeAccess(fileID, whitelist);
+        fs.removeParticipantList(fileID, whitelist);
         Assert.isFalse(fs.checkAccess(fileID, person), "The account shouldn't be whitelisted");
     }
 
@@ -187,13 +188,13 @@ contract TestFileSharing {
             accounts[i - 1] = address(i);
             accessList[i - 1] = false;
         }
-        fs.addAccess(fileID, accounts, accessList);
+        fs.addParticipantList(fileID, accounts, accessList);
 
         for(uint j = 0; j < accountsAmount; j++) {
             Assert.isTrue(fs.checkAccess(fileID, accounts[j]), "The account should be whitelisted");
         }
 
-        fs.removeAccess(fileID, accounts);
+        fs.removeParticipantList(fileID, accounts);
 
         for(uint j = 0; j < accountsAmount; j++) {
             Assert.isFalse(fs.checkAccess(fileID, accounts[j]), "The account shouldn't be whitelisted");
