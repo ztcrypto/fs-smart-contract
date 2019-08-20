@@ -40,7 +40,6 @@ This contract controls access to user files via whitelist, owner and KYC.
 | `ParticipantRemoved` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address participant` - user, removed from file's whitelist | Emits when participant has been removed from whitelist |
 | `ParticipantListRemoved` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address[] participants` - users, removed from file's whitelist | Emits when participants list has been removed from whitelist |
 | `FileAdded` | `uint code` - event code, `uint version` - version, `address owner` - file owner, `string fileID` - file ID | Emits when new file added |
-| `FileAddedWithWhitelist` | `uint code` - event code, `uint version` - version, `address owner` - file owner, `string fileID` - file ID, `address[] participants` - users, added to file's whitelist, `bool[] isKYCNeededList` - "is KYC needed" flag for each user | Emits when new file added with whitelist |
 | `ParticipantKYCChanged` | `uint code` - event code, `uint version` - version, `string fileID` - file ID, `address participant` - whitelisted participant address, `bool isKYCNeeded` - new value of KYC access for participant | Emits when participants KYC flag changes |
 
 ## Methods
@@ -48,9 +47,7 @@ This contract controls access to user files via whitelist, owner and KYC.
 | Method | Returned value | Argument | Key words | Description |
 |---|---|---|---|---|
 | `constructor` | -//- | `address KYCAddress` - KYC contract address | `public` | Contract constructor |
-| `_addFile` | -//- | `string fileID` - new file ID, `string extension` - additional info | `private` | Method to add a new file. Uses in other methods to add file |
 | `addFile` | -//- | `string fileID` - new file ID, `string extension` - additional info | `external` | Method to add a new file |
-| `addFile` | -//- | `string fileID` - new file ID, `string extension` - additional info, `address[] participants` - file whitelist, `bool[] isKYCNeededList` - "is KYC needed" flag for each user | `external` | Overload addFile method from the file's whitelist |
 | `_addParticipant` | -//- | `string fileID` - file ID, `address participant` - new address to be added to whitelist, `bool isKYCNeeded` - KYC flag, `string extension` - user additional info | `private` | A method to allow user file access. Uses in other methods to add participant |
 | `addParticipant` | -//- | `string fileID` - file ID, `address participant` - new address to be added to whitelist, `bool isKYCNeeded` - KYC flag, `string extension` - user additional info | `external` | A method to allow user file access |
 | `addParticipantList` | -//- | `string fileID` - file ID, `address[] participants` - new addresses to be added to whitelist, `bool[] isKYCNeededList` - "is KYC needed" flag for each user | `external` | A method to allow users file access |

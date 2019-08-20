@@ -14,7 +14,7 @@ contract TestFileShare {
 
         string memory fileID = "test1";
 
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
         Assert.isFalse(fs.checkAccess(fileID, address(0x11110)), "The user shouldn't have access");
     }
 
@@ -23,11 +23,8 @@ contract TestFileShare {
         string memory fileID = "test2";
 
         address person = address(0x11111);
-        address[] memory personList = new address[](1);
-        personList[0] = person;
-        bool[] memory accessList = new bool[](1);
-        accessList[0] = false;
-        fs.addFile(fileID, personList, accessList);
+        fs.addFile(fileID, "");
+        fs.addParticipant(fileID, person, false, "");
         Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
     }
 
@@ -36,12 +33,8 @@ contract TestFileShare {
         string memory fileID = "test3";
 
         address person = address(0x11112);
-        address[] memory personList = new address[](1);
-        personList[0] = person;
-        bool[] memory accessList = new bool[](1);
-        accessList[0] = true;
-
-        fs.addFile(fileID, personList, accessList);
+        fs.addFile(fileID, "");
+        fs.addParticipant(fileID, person, true, "");
         Assert.isFalse(fs.checkAccess(fileID, person), "The user shouldn't have access");
 
         fs.setParticipantKYC(fileID, person, false);
@@ -54,14 +47,10 @@ contract TestFileShare {
         string memory fileID = "test4";
 
         address person = address(0x11113);
-        address[] memory personList = new address[](1);
-        personList[0] = person;
         contractKYC.addUser(person);
 
-        bool[] memory accessList = new bool[](1);
-        accessList[0] = true;
-
-        fs.addFile(fileID, personList, accessList);
+        fs.addFile(fileID, "");
+        fs.addParticipant(fileID, person, true, "");
         Assert.isTrue(fs.checkAccess(fileID, person), "The user should have access");
     }
 
@@ -69,7 +58,7 @@ contract TestFileShare {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
         string memory fileID = "test5";
 
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
         Assert.isTrue(fs.checkAccess(fileID, address(this)), "Owner should have access to file");
     }
 
@@ -89,7 +78,8 @@ contract TestFileShare {
         accessList[0] = false;
         accessList[1] = false;
 
-        fs.addFile(fileID, whitelist, accessList);
+        fs.addFile(fileID, "");
+        fs.addParticipantList(fileID, whitelist, accessList);
 
         Assert.equal(fs.checkAccess(fileID, person1), true, "Invalid access for whitelisted account");
         Assert.equal(fs.checkAccess(fileID, person1), true, "Invalid access for whitelisted account");
@@ -101,7 +91,7 @@ contract TestFileShare {
         string memory fileID = "test7";
 
         ThrowProxy throwProxy = new ThrowProxy(address(fs));
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
 
         address person = address(0x198498);
 
@@ -121,7 +111,8 @@ contract TestFileShare {
         bool[] memory accessList = new bool[](1);
         accessList[0] = false;
 
-        fs.addFile(fileID, whitelist, accessList);
+        fs.addFile(fileID, "");
+        fs.addParticipantList(fileID, whitelist, accessList);
         fs.removeParticipantList(fileID, whitelist);
         Assert.equal(fs.checkAccess(fileID, person), false, "The account shouldn't have access");
     }
@@ -130,7 +121,7 @@ contract TestFileShare {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
         string memory fileID = "test9";
 
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
 
         address person = address(0x11171338);
         address[] memory whitelist = new address[](1);
@@ -154,7 +145,7 @@ contract TestFileShare {
         FileShare fs = FileShare(DeployedAddresses.FileShare());
         string memory fileID = "test10";
 
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
 
         address person = address(0x11898480);
         address[] memory whitelist = new address[](1);
@@ -182,7 +173,7 @@ contract TestFileShare {
         address[] memory accounts = new address[](accountsAmount);
         bool[] memory accessList = new bool[](accountsAmount);
 
-        fs.addFile(fileID);
+        fs.addFile(fileID, "");
 
         for(uint i = 1; i < accountsAmount + 1; i++) {
             accounts[i - 1] = address(i);
@@ -219,7 +210,7 @@ contract TestFileShare {
 
         for(uint i = 0; i < filesAmount; i++) {
             files[i] = files[i];
-            fs.addFile(files[i]);
+            fs.addFile(files[i], "");
         }
 
         for(uint j = 0; j < filesAmount; j++) {

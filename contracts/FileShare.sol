@@ -58,7 +58,6 @@ contract FileShare {
     event ParticipantRemoved(uint code, uint version, string fileID, address participant);
     event ParticipantListRemoved(uint code, uint version, string fileID, address[] participants);
     event FileAdded(uint code, uint version, address owner, string fileID);
-    event FileAddedWithWhitelist(uint code, uint version, address owner, string fileID, address[] participants, bool[] isKYCNeededList);
     event ParticipantKYCChanged(uint code, uint version, string fileID, address participant, bool isKYCNeeded);
 
     /// @notice checks, whether the sender is the owner of the file
@@ -92,7 +91,8 @@ contract FileShare {
 
     /// @notice adds new file
     /// @param fileID file identifier
-    function _addFile(string memory fileID, string memory extension) private {
+    /// @param extension file's additional info
+    function addFile(string calldata fileID, string calldata extension) external {
         Participant memory owner;
         owner.participant = msg.sender;
         owner.isKYCNeeded = false;
@@ -102,31 +102,8 @@ contract FileShare {
         file.extension = extension;
         _files[fileID] = file;
         _files[fileID].whitelist[msg.sender] = owner;
-    }
-
-    /// @notice adds new file
-    /// @param fileID file identifier
-    /// @param extension file's additional info
-    function addFile(string calldata fileID, string calldata extension) external {
-        _addFile(fileID, extension);
 
         emit FileAdded(_fileAddedCode, _version++, msg.sender, fileID);
-    }
-
-    /// @notice adds new file
-    /// @param fileID file identifier
-    /// @param extension file's additional info
-    /// @param participants initial whitelist for file
-    /// @param isKYCNeededList list of KYC flags for participants
-    function addFile(string calldata fileID, string calldata extension, address[] calldata participants, bool[] calldata isKYCNeededList)
-            external whitelistKYCListLengthCheck(participants, isKYCNeededList) {
-
-        _addFile(fileID, extension);
-        for (uint i = 0; i < participants.length; i++)
-            _addParticipant(fileID, participants[i], isKYCNeededList[i], "");
-
-        emit FileAddedWithWhitelist(_fileAddedWithWhitelistCode, _version++, msg.sender, fileID,
-                                    participants, isKYCNeededList);
     }
 
     /// @notice grants the user access to the file
